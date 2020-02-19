@@ -19,7 +19,6 @@ namespace RequestService.Events
     {
         public Task Consume(ConsumeContext<RequestReceived> context)
         {
-            Console.WriteLine(context.Message.CorrelationId);
             return Task.CompletedTask;
         }
     }

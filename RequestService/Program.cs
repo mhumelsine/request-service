@@ -30,16 +30,19 @@ namespace RequestService
             string serviceBusHostAddress = "localhost";
             string serviceBusHostUsername = "guest";
             string serviceBusHostPassword = "guest";
-            string sqlServerConnectionString = "Data Source=merlindevsql01.isf.com;Initial Catalog=Merlin;Integrated Security=True";
+            //string sqlServerConnectionString = "Data Source=merlindevsql01.isf.com;Initial Catalog=Merlin;Integrated Security=True";
             //string sqlServerConnectionString = @"Data Source=(localdb)\mssqllocaldb;Initial Catalog=Merlin;Integrated Security=True";
+            string sqlServerConnectionString = "Data Source=doh-wddb005;Initial Catalog=Merlin;Integrated Security=True";
 
             var builder = new HostBuilder()
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddScoped<AggregateRepository<Request>>();
-                    services.AddScoped<IEventSerializer, JsonEventSerializer>();
-                    services.AddScoped<IEventStore, DapperEventStore>(provider =>
+                    services.AddSingleton<IEventSerializer, JsonEventSerializer>();
+                    services.AddSingleton<IEventStore, DapperEventStore>(provider =>
                         new DapperEventStore(sqlServerConnectionString, provider.GetRequiredService<IEventSerializer>()));
+
+                    //services.AddTransient<IEventStore, InMemoryEventStore>();
 
                     //services.AddTransient<>
 
@@ -57,6 +60,8 @@ namespace RequestService
                         return EntityFrameworkSagaRepository<RequestState>.CreateOptimistic(
                             () => provider.GetRequiredService<RequestStateDbContext>());
                     });
+
+                    //services.AddTransient<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
 
                     //services.AddScoped<ISagaRepository<RequestState>>(provider => new InMemorySagaRepository<RequestState>());
 
@@ -80,29 +85,30 @@ namespace RequestService
                         //    });
 
 
-                        x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
+                        x.AddBus(provider => Bus.Factory.CreateUsingInMemory(cfg =>
                         {
-                            var host = cfg.Host(serviceBusHostAddress, h =>
-                            {
-                                h.Username(serviceBusHostUsername);
-                                h.Password(serviceBusHostPassword);
-                            });
+                            //var host = cfg.Host(serviceBusHostAddress, h =>
+                            //{
+                            //    h.Username(serviceBusHostUsername);
+                            //    h.Password(serviceBusHostPassword);
+                            //});
 
                             //cfg.PrefetchCount = 16;
 
                             cfg.ReceiveEndpoint("request-queue", ecfg =>
                             {
                                 ecfg.UseInMemoryOutbox();
-                                ecfg.UseMessageRetry(retry =>
-                                {
-                                    //retry.Incremental(10, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(10));
-                                    retry.Immediate(5);
+                                //ecfg.ConcurrencyLimit = 128;
+                                //ecfg.UseMessageRetry(retry =>
+                                //{
+                                //    //retry.Incremental(10, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(10));
+                                //    retry.Immediate(5);
 
-                                    //figure out what to do here
-                                    //https://masstransit-project.com/usage/exceptions.html#retry-configuration
-                                    //retry.Handle<Exception>();
-                                    //retry.Ignore<SqlException>();
-                                });
+                                //    //figure out what to do here
+                                //    //https://masstransit-project.com/usage/exceptions.html#retry-configuration
+                                //    //retry.Handle<Exception>();
+                                //    //retry.Ignore<SqlException>();
+                                //});
 
                                 ecfg.Consumer(() => new IdentifyFacilityConsumer(provider.GetRequiredService<AggregateRepository<Request>>()));
                                 ecfg.Consumer(() => new IdentifyProviderConsumer(provider.GetRequiredService<AggregateRepository<Request>>()));
@@ -128,9 +134,9 @@ namespace RequestService
                     });
 
                     services.AddHostedService<Service>();
-                    //services.AddHostedService(provider => new QueuePoller(
-                    //    TimeSpan.FromMilliseconds(500),
-                    //    provider.GetRequiredService<AggregateRepository<Request>>()));
+                    services.AddHostedService(provider => new QueuePoller(
+                        TimeSpan.FromMilliseconds(1),
+                        provider.GetRequiredService<AggregateRepository<Request>>()));
                 });
 
 

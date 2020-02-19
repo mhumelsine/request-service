@@ -24,12 +24,20 @@ namespace RequestService
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            var sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            int i = 0;
+
             await Task.Factory.StartNew(async () =>
             {
                 while (true)
                 {
+                    i++;
+
                     await WorkerTask();
                     await Task.Delay(pollingMilliseconds, cancellationToken);
+
+                    Console.WriteLine((sw.ElapsedMilliseconds / i));
                 }
             }, cancellationToken);
         }
@@ -43,6 +51,7 @@ namespace RequestService
         {
             //Console.WriteLine("poll");
             //Console.WriteLine(DateTime.Now);
+
 
             var request = new Request() { Uid = Guid.NewGuid() };
 
