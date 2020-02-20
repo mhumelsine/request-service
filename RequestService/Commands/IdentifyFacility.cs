@@ -24,14 +24,16 @@ namespace RequestService.Commands
         {
         }
 
-        protected override Task<FacilityIdentified> Handle(ConsumeContext<IdentifyFacility> context, Request aggregate)
+        protected override async Task<FacilityIdentified> Handle(ConsumeContext<IdentifyFacility> context, Request aggregate)
         {
             //do work of resource matching
             var @event = new FacilityIdentified { FacilityId = 128 };
 
             //Console.WriteLine("On Facility");
 
-            return Task.FromResult(@event);
+            await Task.Delay(100);
+
+            return @event;
         }
     }
 }

@@ -10,12 +10,14 @@ using System.Text;
 
 namespace RequestService.Sagas
 {
-    public class RequestState : SagaStateMachineInstance, IVersionedSaga
+    public class RequestState : 
+        SagaStateMachineInstance
+        //, IVersionedSaga
     {
         public string CurrentState { get; set; }
         public Guid CorrelationId { get; set; }
         public int ResourceMatchingEventStatus { get; set; }
-        public int Version { get; set; }
+        //public int Version { get; set; }
     }
 
     public class RequestStateMachine : MassTransitStateMachine<RequestState>
@@ -28,6 +30,10 @@ namespace RequestService.Sagas
                 When(RequestReceived)
                 .Publish(context =>new IdentifyProvider(context.Instance.CorrelationId))
                 .Publish(context => new IdentifyFacility(context.Instance.CorrelationId))
+                .Then(context =>
+                {
+                    Console.WriteLine(context.Event.Name);
+                })
                 .TransitionTo(ResourceMatchingState));
 
             CompositeEvent(() => ResourcesMatched, x => x.ResourceMatchingEventStatus, ProviderIdentified, FacilityIdentified);

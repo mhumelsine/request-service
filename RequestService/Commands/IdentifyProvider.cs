@@ -24,13 +24,15 @@ namespace RequestService.Commands
         {
         }
 
-        protected override Task<ProviderIdentified> Handle(ConsumeContext<IdentifyProvider> context, Request aggregate)
+        protected override async Task<ProviderIdentified> Handle(ConsumeContext<IdentifyProvider> context, Request aggregate)
         {
             var @event = new ProviderIdentified { ProviderId = 44 };
 
             //Console.WriteLine("On Provider");
 
-            return Task.FromResult(@event);
+            await Task.Delay(100);
+
+            return @event;
         }
     }
 }
