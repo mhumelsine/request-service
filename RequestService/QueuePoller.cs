@@ -26,6 +26,9 @@ namespace RequestService
         {
             var sw = new System.Diagnostics.Stopwatch();
             sw.Start();
+
+            var s = new System.Diagnostics.Stopwatch();
+
             int i = 0;
 
             await Task.Factory.StartNew(async () =>
@@ -33,12 +36,14 @@ namespace RequestService
                 while (true)
                 {
                     i++;
-
+                    s.Reset();
+                    s.Start();
                     await WorkerTask();
+                    s.Stop();
                     await Task.Delay(pollingMilliseconds, cancellationToken);
 
-                    Console.WriteLine((sw.ElapsedMilliseconds / i));
-                }
+                    Console.WriteLine($"Avg: {(sw.ElapsedMilliseconds / i)}: Current: {s.ElapsedMilliseconds}");
+                    }
             }, cancellationToken);
         }
 

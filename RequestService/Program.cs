@@ -59,19 +59,19 @@ namespace RequestService
 
                     //SagaStateMachine<RequestState>
 
-                    //services.AddTransient<ISagaRepository<RequestState>>(provider =>
-                    //{
-                    //    //return new DapperSagaRepository<RequestState>(sqlServerConnectionString);
-                    //    //return EntityFrameworkSagaRepository<RequestState>.CreateOptimistic(
-                    //    //    () => provider.GetRequiredService<RequestStateDbContext>());
+                    services.AddTransient<ISagaRepository<RequestState>>(provider =>
+                    {
+                        //return new DapperSagaRepository<RequestState>(sqlServerConnectionString);
+                        //return EntityFrameworkSagaRepository<RequestState>.CreateOptimistic(
+                        //    () => provider.GetRequiredService<RequestStateDbContext>());
 
-                    //    var redis = ConnectionMultiplexer.Connect("merlin-bus.redis.cache.windows.net:6380,password=FTWpGZOqWYFuD7ODCWVStqZlnE7w6MxPsachuh8k+4U=,ssl=True,abortConnect=False");
+                        var redis = ConnectionMultiplexer.Connect("merlin-bus.redis.cache.windows.net:6380,password=FTWpGZOqWYFuD7ODCWVStqZlnE7w6MxPsachuh8k+4U=,ssl=True,abortConnect=False");
 
-                    //    return new RedisSagaRepository<RequestState>(() => redis.GetDatabase());
+                        return new RedisSagaRepository<RequestState>(() => redis.GetDatabase());
 
-                    //});
+                    });
 
-                    services.AddTransient<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
+                    //services.AddTransient<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
 
                     //services.AddScoped<ISagaRepository<RequestState>>(provider => new InMemorySagaRepository<RequestState>());
 
