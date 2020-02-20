@@ -2,8 +2,11 @@
 using EventStore;
 using GreenPipes;
 using MassTransit;
+using MassTransit.DapperIntegration;
 using MassTransit.EntityFrameworkCoreIntegration;
 using MassTransit.EntityFrameworkCoreIntegration.Saga;
+using MassTransit.RedisIntegration;
+using MassTransit.RedisIntegration.Configuration;
 using MassTransit.Saga;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +16,7 @@ using RequestService.Aggregates;
 using RequestService.Commands;
 using RequestService.Events;
 using RequestService.Sagas;
+using StackExchange.Redis;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,9 +34,9 @@ namespace RequestService
             string serviceBusHostAddress = "localhost";
             string serviceBusHostUsername = "guest";
             string serviceBusHostPassword = "guest";
-            //string sqlServerConnectionString = "Data Source=merlindevsql01.isf.com;Initial Catalog=Merlin;Integrated Security=True";
+            string sqlServerConnectionString = "Data Source=merlindevsql01.isf.com;Initial Catalog=Merlin;Integrated Security=True";
             //string sqlServerConnectionString = @"Data Source=(localdb)\mssqllocaldb;Initial Catalog=Merlin;Integrated Security=True";
-            string sqlServerConnectionString = "Data Source=doh-wddb005;Initial Catalog=Merlin;Integrated Security=True";
+            //string sqlServerConnectionString = "Data Source=doh-wddb005;Initial Catalog=Merlin;Integrated Security=True";
 
             var builder = new HostBuilder()
                 .ConfigureServices((hostContext, services) =>
@@ -55,13 +59,19 @@ namespace RequestService
 
                     //SagaStateMachine<RequestState>
 
-                    services.AddTransient<ISagaRepository<RequestState>>(provider =>
-                    {
-                        return EntityFrameworkSagaRepository<RequestState>.CreateOptimistic(
-                            () => provider.GetRequiredService<RequestStateDbContext>());
-                    });
+                    //services.AddTransient<ISagaRepository<RequestState>>(provider =>
+                    //{
+                    //    //return new DapperSagaRepository<RequestState>(sqlServerConnectionString);
+                    //    //return EntityFrameworkSagaRepository<RequestState>.CreateOptimistic(
+                    //    //    () => provider.GetRequiredService<RequestStateDbContext>());
 
-                    //services.AddTransient<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
+                    //    var redis = ConnectionMultiplexer.Connect("merlin-bus.redis.cache.windows.net:6380,password=FTWpGZOqWYFuD7ODCWVStqZlnE7w6MxPsachuh8k+4U=,ssl=True,abortConnect=False");
+
+                    //    return new RedisSagaRepository<RequestState>(() => redis.GetDatabase());
+
+                    //});
+
+                    services.AddTransient<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
 
                     //services.AddScoped<ISagaRepository<RequestState>>(provider => new InMemorySagaRepository<RequestState>());
 
@@ -85,13 +95,13 @@ namespace RequestService
                         //    });
 
 
-                        x.AddBus(provider => Bus.Factory.CreateUsingInMemory(cfg =>
+                        x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(cfg =>
                         {
-                            //var host = cfg.Host(serviceBusHostAddress, h =>
-                            //{
-                            //    h.Username(serviceBusHostUsername);
-                            //    h.Password(serviceBusHostPassword);
-                            //});
+                            var host = cfg.Host(serviceBusHostAddress, h =>
+                            {
+                                h.Username(serviceBusHostUsername);
+                                h.Password(serviceBusHostPassword);
+                            });
 
                             //cfg.PrefetchCount = 16;
 
@@ -135,7 +145,7 @@ namespace RequestService
 
                     services.AddHostedService<Service>();
                     services.AddHostedService(provider => new QueuePoller(
-                        TimeSpan.FromMilliseconds(1),
+                        TimeSpan.FromMilliseconds(100),
                         provider.GetRequiredService<AggregateRepository<Request>>()));
                 });
 

@@ -1,5 +1,7 @@
 ﻿using Automatonymous;
 using Automatonymous.Requests;
+using MassTransit.RedisIntegration;
+using MassTransit.Saga;
 using RequestService.Commands;
 using RequestService.Events;
 using System;
@@ -8,11 +10,12 @@ using System.Text;
 
 namespace RequestService.Sagas
 {
-    public class RequestState : SagaStateMachineInstance
+    public class RequestState : SagaStateMachineInstance, IVersionedSaga
     {
         public string CurrentState { get; set; }
         public Guid CorrelationId { get; set; }
         public int ResourceMatchingEventStatus { get; set; }
+        public int Version { get; set; }
     }
 
     public class RequestStateMachine : MassTransitStateMachine<RequestState>
