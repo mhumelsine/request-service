@@ -29,7 +29,7 @@ namespace RequestService.Commands
         {
             var @event = new ProviderIdentified { ProviderId = 44 };
 
-            //Console.WriteLine("On Provider");
+            Console.WriteLine("On Provider");
 
             await Task.Delay(100);
 

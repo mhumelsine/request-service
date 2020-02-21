@@ -22,7 +22,6 @@ namespace RequestService.Commands
     {
         public IdentifyFacilityConsumer(AggregateRepository<Request> repos) : base(repos)
         {
-            Console.WriteLine("F");
         }
 
         protected override async Task<FacilityIdentified> Handle(ConsumeContext<IdentifyFacility> context, Request aggregate)
@@ -30,7 +29,7 @@ namespace RequestService.Commands
             //do work of resource matching
             var @event = new FacilityIdentified { FacilityId = 128 };
 
-            //Console.WriteLine("On Facility");
+            Console.WriteLine("On Facility");
 
             await Task.Delay(100);
 
