@@ -11,11 +11,13 @@
 
   <ItemGroup>
     <PackageReference Include="MassTransit" Version="6.1.0" />
+    <PackageReference Include="MassTransit.Azure.ServiceBus.Core" Version="6.1.0" />
     <PackageReference Include="MassTransit.DapperIntegration" Version="6.1.0" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="6.1.0" />
     <PackageReference Include="MassTransit.Extensions.DependencyInjection" Version="6.1.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="6.1.0" />
     <PackageReference Include="MassTransit.Redis" Version="6.1.0" />
+    <PackageReference Include="MassTransit.TestFramework" Version="6.1.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.1" />
 
   </ItemGroup>

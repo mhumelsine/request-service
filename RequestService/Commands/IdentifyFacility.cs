@@ -22,6 +22,7 @@ namespace RequestService.Commands
     {
         public IdentifyFacilityConsumer(AggregateRepository<Request> repos) : base(repos)
         {
+            Console.WriteLine("F");
         }
 
         protected override async Task<FacilityIdentified> Handle(ConsumeContext<IdentifyFacility> context, Request aggregate)

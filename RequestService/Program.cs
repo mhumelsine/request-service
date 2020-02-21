@@ -1,15 +1,18 @@
 ﻿using Automatonymous;
 using EventStore;
+using GreenPipes;
+using GreenPipes.Introspection;
 using MassTransit;
-using MassTransit.EntityFrameworkCoreIntegration;
+using MassTransit.Azure.ServiceBus.Core;
+using MassTransit.Azure.ServiceBus.Core.Saga;
+using MassTransit.TestFramework;
 //using MassTransit.RedisIntegration;
-using MassTransit.Saga;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RequestService.Aggregates;
 using RequestService.Commands;
+using RequestService.Events;
 using RequestService.Sagas;
 using System;
 using System.Threading.Tasks;
@@ -20,18 +23,30 @@ namespace RequestService
     class Program
     {
 
+        static void OnException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Console.WriteLine(e.ExceptionObject);
+        }
+
         static async Task Main(string[] args)
         {
-
+            System.AppDomain.CurrentDomain.UnhandledException += OnException;
             //need config
             string serviceBusHostAddress = "localhost";
             string serviceBusHostUsername = "guest";
             string serviceBusHostPassword = "guest";
-            //string sqlServerConnectionString = "Data Source=merlindevsql01.isf.com;Initial Catalog=Merlin;Integrated Security=True";
+            string sqlServerConnectionString = "Data Source=merlindevsql01.isf.com;Initial Catalog=Merlin;Integrated Security=True";
+            string serviceBusConnectionString = "Endpoint=sb://merlinsb.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=PPPXGlPcVO8lCVgJgi6laNWaR9hwcSXCPCqrKmmtv8U=";
             //string sqlServerConnectionString = @"Data Source=(localdb)\mssqllocaldb;Initial Catalog=Merlin;Integrated Security=True";
-            string sqlServerConnectionString = "Data Source=doh-wddb005;Initial Catalog=Merlin;Integrated Security=True";
+            //string sqlServerConnectionString = "Data Source=doh-wddb005;Initial Catalog=Merlin;Integrated Security=True";
+
+            IBusControl bus = null;
 
             var builder = new HostBuilder()
+                .ConfigureLogging(logging =>
+                {
+                    logging.AddConsole();
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddScoped<AggregateRepository<Request>>();
@@ -48,8 +63,8 @@ namespace RequestService
                     //    options.UseSqlServer(sqlServerConnectionString);
                     //}, ServiceLifetime.Transient);
 
-                    services.AddSingleton<SagaStateMachine<RequestState>, RequestStateMachine>();
-
+                    //services.AddSingleton<SagaStateMachine<RequestState>, RequestStateMachine>();
+                    //services.AddSingleton<SagaStateMachine<RequestState>, RequestStateMachine>();
 
                     //SagaStateMachine<RequestState>
 
@@ -65,7 +80,8 @@ namespace RequestService
 
                     //});
 
-                    services.AddSingleton<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
+                    //services.AddSingleton<ISagaRepository<RequestState>, InMemorySagaRepository<RequestState>>();
+
 
 
                     services.AddMassTransit(x =>
@@ -78,17 +94,19 @@ namespace RequestService
                         //    r.LockSuffix = "-locked";
                         //    r.LockTimeout = TimeSpan.FromMinutes(1);
                         //});
-                        .EntityFrameworkRepository(repos =>
-                        {
-                            //repos.ConcurrencyMode = ConcurrencyMode.Optimistic;
-
-                            repos.AddDbContext<RequestStateDbContext, RequestStateDbContext>((provider, options) =>
-                            {
-                                options.UseSqlServer(sqlServerConnectionString);
-                                var logger = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Error));
-                                options.UseLoggerFactory(logger);
-                            });
-                        });
+                        //.EntityFrameworkRepository(repos =>
+                        //{
+                        //    //repos.ConcurrencyMode = ConcurrencyMode.Optimistic;
+                        //    repos.IsolationLevel = IsolationLevel.Serializable;
+                        //    repos.LockStatementProvider = new MemoryOptimizedLockStatementProvider("events", true);
+                        //    repos.AddDbContext<RequestStateDbContext, RequestStateDbContext>((provider, options) =>
+                        //    {
+                        //        options.UseSqlServer(sqlServerConnectionString);
+                        //        var logger = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Error));
+                        //        options.UseLoggerFactory(logger);
+                        //    });
+                        //});
+                        .MessageSessionRepository();
                         //.Endpoint(ecfg =>
                         //{
                         //    ecfg.Name = "request-queue";
@@ -96,60 +114,111 @@ namespace RequestService
 
                         x.AddConsumer<IdentifyFacilityConsumer>();
                         x.AddConsumer<IdentifyProviderConsumer>();
+                        x.AddConsumer<RequestReceiveConsumer>();
 
-                        x.AddBus(provider => Bus.Factory.CreateUsingInMemory(cfg =>
+
+
+                        x.AddBus(provider =>
                         {
-                            //var host = cfg.Host(serviceBusHostAddress, h =>
-                            //{
-                            //    h.Username(serviceBusHostUsername);
-                            //    h.Password(serviceBusHostPassword);
-                            //});
+                            bus = Bus.Factory.CreateUsingAzureServiceBus(cfg =>
+                            {
 
-                            //cfg.PrefetchCount = 16;
-                            cfg.ConfigureEndpoints(provider);
+                                cfg.Host(serviceBusConnectionString);
+
+                                //var host = cfg.Host(serviceBusHostAddress, h =>
+                                //{
+                                //    h.Username(serviceBusHostUsername);
+                                //    h.Password(serviceBusHostPassword);
+                                //});
+
+                                //cfg.PrefetchCount = 16;
+                                //cfg.ConfigureEndpoints(provider);
 
 
-                            //    cfg.ReceiveEndpoint("request-queue", ecfg =>
-                            //    {
-                            //ecfg.UseInMemoryOutbox();
-                            //        //ecfg.ConcurrencyLimit = 128;
-                            //        //ecfg.UseMessageRetry(retry =>
-                            //        //{
-                            //        //    //retry.Incremental(10, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(10));
-                            //        //    retry.Immediate(5);
+                                
 
-                            //        //    //figure out what to do here
-                            //        //    //https://masstransit-project.com/usage/exceptions.html#retry-configuration
-                            //        //    //retry.Handle<Exception>();
-                            //        //    //retry.Ignore<SqlException>();
-                            //        //});
+                                cfg.ReceiveEndpoint("request", ecfg =>
+                                {
+                                    ecfg.RequiresSession = true;
 
-                            //        ecfg.Consumer(() => new IdentifyFacilityConsumer(provider.GetRequiredService<AggregateRepository<Request>>()));
-                            //        ecfg.Consumer(() => new IdentifyProviderConsumer(provider.GetRequiredService<AggregateRepository<Request>>()));
+                                    //maybe we need/don't need
+                                    //ecfg.MessageWaitTimeout = TimeSpan.FromHours(8);
 
-                            //        //ecfg.StateMachineSaga<RequestState>(provider);
+                                    //ecfg.State
 
-                            //        //ecfg.Consumer(() => new RequestReceiveConsumer());
-                            //        //couldn't get this to work
-                            //        //ecfg.ConfigureConsumer<IdentifyFacilityConsumer>(provider);
-                            //        //ecfg.ConfigureConsumer<IdentifyProviderConsumer>(provider);
-                            //        //ecfg.StateMachineSaga<RequestState>(provider);
-                            //        //ecfg.StateMachineSaga(
-                            //        //provider.GetRequiredService<SagaStateMachine<RequestState>>(),
-                            //        //            provider.GetRequiredService<ISagaRepository<RequestState>>());
+                                    //ecfg.ConfigureConsumer<IdentifyFacilityConsumer>(provider);
+                                    
+                                    //ecfg.StateMachineSaga<RequestState>(provider);
+                                    ecfg.ConfigureSaga<RequestState>(provider);
 
-                            //        //ecfg.StateMachineSaga<RequestState>(provider);
-                            //    });
+                                    //var machine = new RequestStateMachine();
+                                    //var repos = new MessageSessionSagaRepository<RequestState>();
 
-                            //    //couldn't get this to work
-                            //    //cfg.ConfigureEndpoints(provider);
-                        }));
+                                    //ecfg.StateMachineSaga(machine, repos);
+
+                                    ecfg.ConfigureConsumer<IdentifyFacilityConsumer>(provider);
+                                    ecfg.ConfigureConsumer<IdentifyProviderConsumer>(provider);
+                                    ecfg.ConfigureConsumer<RequestReceiveConsumer>(provider);
+
+                                    //EndpointConvention.Map<RequestReceived>(ecfg.InputAddress);
+                                    //EndpointConvention.Map<IdentifyProvider>(ecfg.InputAddress);
+                                    //EndpointConvention.Map<IdentifyFacility>(ecfg.InputAddress);
+                                });
+
+                                //cfg.ConfigureEndpoints(provider);
+
+                                //    cfg.ReceiveEndpoint("request-queue", ecfg =>
+                                //    {
+                                //ecfg.UseInMemoryOutbox();
+                                //        //ecfg.ConcurrencyLimit = 128;
+                                //        //ecfg.UseMessageRetry(retry =>
+                                //        //{
+                                //        //    //retry.Incremental(10, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(10));
+                                //        //    retry.Immediate(5);
+
+                                //        //    //figure out what to do here
+                                //        //    //https://masstransit-project.com/usage/exceptions.html#retry-configuration
+                                //        //    //retry.Handle<Exception>();
+                                //        //    //retry.Ignore<SqlException>();
+                                //        //});
+
+                                //        ecfg.Consumer(() => new IdentifyFacilityConsumer(provider.GetRequiredService<AggregateRepository<Request>>()));
+                                //        ecfg.Consumer(() => new IdentifyProviderConsumer(provider.GetRequiredService<AggregateRepository<Request>>()));
+
+                                //        //ecfg.StateMachineSaga<RequestState>(provider);
+
+                                //        //ecfg.Consumer(() => new RequestReceiveConsumer());
+                                //        //couldn't get this to work
+                                //        //ecfg.ConfigureConsumer<IdentifyFacilityConsumer>(provider);
+                                //        //ecfg.ConfigureConsumer<IdentifyProviderConsumer>(provider);
+                                //        //ecfg.StateMachineSaga<RequestState>(provider);
+                                //        //ecfg.StateMachineSaga(
+                                //        //provider.GetRequiredService<SagaStateMachine<RequestState>>(),
+                                //        //            provider.GetRequiredService<ISagaRepository<RequestState>>());
+
+                                //        //ecfg.StateMachineSaga<RequestState>(provider);
+                                //    });
+
+                                //    //couldn't get this to work
+                                //    //cfg.ConfigureEndpoints(provider);
+                            });
+
+
+                            ProbeResult result = bus.GetProbeResult();
+
+                            Console.WriteLine(result.ToJsonString());
+
+                            return bus;
+                        });
+
+
                     });
 
+
                     services.AddHostedService<Service>();
-                    services.AddHostedService(provider => new QueuePoller(
-                        TimeSpan.FromMilliseconds(10),
-                        provider.GetRequiredService<AggregateRepository<Request>>()));
+                    //services.AddHostedService(provider => new QueuePoller(
+                    //    TimeSpan.FromMilliseconds(1000),
+                    //    provider.GetRequiredService<AggregateRepository<Request>>()));
                 });
 
 

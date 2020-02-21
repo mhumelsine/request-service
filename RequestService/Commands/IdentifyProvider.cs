@@ -22,6 +22,7 @@ namespace RequestService.Commands
     {
         public IdentifyProviderConsumer(AggregateRepository<Request> repos) : base(repos)
         {
+            Console.WriteLine("F");
         }
 
         protected override async Task<ProviderIdentified> Handle(ConsumeContext<IdentifyProvider> context, Request aggregate)

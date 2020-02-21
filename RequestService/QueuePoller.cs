@@ -57,17 +57,23 @@ namespace RequestService
             //Console.WriteLine("poll");
             //Console.WriteLine(DateTime.Now);
 
-
-            var request = new Request() { Uid = Guid.NewGuid() };
-
-            request.Apply(new RequestReceived
+            try
             {
-                CorrelationId = Guid.NewGuid(),
-                FacilityName = "LabCrop",
-                ProviderName = "Dr. Michael"
-            });
+                var request = new Request() { Uid = Guid.NewGuid() };
 
-            await repos.Save(request);
+                request.Apply(new RequestReceived
+                {
+                    CorrelationId = Guid.NewGuid(),
+                    FacilityName = "LabCrop",
+                    ProviderName = "Dr. Michael"
+                });
+
+                await repos.Save(request);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 }
