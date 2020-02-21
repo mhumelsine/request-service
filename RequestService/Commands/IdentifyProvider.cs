@@ -22,7 +22,6 @@ namespace RequestService.Commands
     {
         public IdentifyProviderConsumer(AggregateRepository<Request> repos) : base(repos)
         {
-            Console.WriteLine("F");
         }
 
         protected override async Task<ProviderIdentified> Handle(ConsumeContext<IdentifyProvider> context, Request aggregate)
@@ -31,7 +30,7 @@ namespace RequestService.Commands
 
             //Console.WriteLine("On Provider");
 
-            await Task.Delay(100);
+            //await Task.Delay(100);
 
             return @event;
         }

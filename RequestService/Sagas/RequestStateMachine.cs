@@ -30,10 +30,10 @@ namespace RequestService.Sagas
                 When(RequestReceived)
                 .Publish(context =>new IdentifyProvider(context.Instance.CorrelationId))
                 .Publish(context => new IdentifyFacility(context.Instance.CorrelationId))
-                .Then(context =>
-                {
-                    Console.WriteLine(context.Event.Name);
-                })
+                //.Then(context =>
+                //{
+                //    Console.WriteLine(context.Event.Name);
+                //})
                 .TransitionTo(ResourceMatchingState));
 
             CompositeEvent(() => ResourcesMatched, x => x.ResourceMatchingEventStatus, ProviderIdentified, FacilityIdentified);
